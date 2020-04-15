@@ -50,7 +50,7 @@
 #import "WXSDKInstance_performance.h"
 #import "WXPageEventNotifyEvent.h"
 #import "WXCoreBridge.h"
-#import <WeexSDK/WXDataRenderHandler.h>
+#import  "WXDataRenderHandler.h"
 
 #define WEEX_LITE_URL_SUFFIX           @"wlasm"
 
