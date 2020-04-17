@@ -2,7 +2,7 @@
 
 Pod::Spec.new do |s|
 
-  s.name         = "WeexSDK"
+  s.name         = "PlusWeexSDK"
 
   s.version      = "1.0.1"
 
@@ -11,7 +11,6 @@ Pod::Spec.new do |s|
   s.description  = <<-DESC
                    A framework for building Mobile cross-platform UI
                    DESC
-WeexSDK
   s.homepage     = "https://github.com/farwolf2010/"
   s.license = {
     :type => 'Copyright',
@@ -39,7 +38,7 @@ WeexSDK
   # }
 
   # use for playground
-  s.source =  { :git => "https://github.com/farwolf2010/WeexSDK.git", :tag => "1.0.1" }
+  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.1" }
 
   s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
                     'weex_core/Source/base/**/*.{h,hpp,m,mm,c,cpp,cc}',
@@ -119,7 +118,7 @@ WeexSDK
                           'weex_core/Source/core/layout/style.h',
                           'weex_core/Source/core/bridge/eagle_bridge.h'
 
-  s.module_map = 'WeexSDK.modulemap'
+  s.module_map = 'PlusWeexSDK.modulemap'
 
   # 0.21.0 版本开始不再需要 native-bundle-main.js
   s.resources = 'ios/sdk/WeexSDK/Resources/*.js','ios/sdk/WeexSDK/Resources/wx_load_error@3x.png'
