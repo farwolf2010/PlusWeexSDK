@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.3"
+  s.version      = "1.0.5"
 
   s.summary      = "WeexSDK Source."
 
@@ -38,7 +38,7 @@ Pod::Spec.new do |s|
   # }
 
   # use for playground
-  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.3" }
+  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.5" }
 
   s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
                     'weex_core/Source/base/**/*.{h,hpp,m,mm,c,cpp,cc}',
@@ -123,12 +123,12 @@ Pod::Spec.new do |s|
   # 0.21.0 版本开始不再需要 native-bundle-main.js
   s.resources = 'ios/sdk/WeexSDK/Resources/*.js','ios/sdk/WeexSDK/Resources/wx_load_error@3x.png'
 
-  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/PlusWeexSDK'","HEADER_SEARCH_PATHS" => "$(PODS_ROOT)/PlusWeexSDK" }
+  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/PlusWeexSDK'"}
   s.requires_arc = true
   s.prefix_header_file = 'ios/sdk/WeexSDK/Sources/Supporting Files/WeexSDK-Prefix.pch'
 
   s.xcconfig = { "OTHER_LINK_FLAG" => '$(inherited) -ObjC' }
-  s.pod_target_xcconfig = { 'USER_HEADER_SEARCH_PATHS' => '${PODS_TARGET_SRCROOT}/weex_core/Source/ ${PROJECT_DIR}/../../../weex_core/Source',
+  s.pod_target_xcconfig = { 'USER_HEADER_SEARCH_PATHS' => '${PODS_TARGET_SRCROOT}/weex_core/Source/ ${PROJECT_DIR}/sdk/weex_core/Source',
     'GCC_PREPROCESSOR_DEFINITIONS' => 'OS_IOS=1' }
 
   s.frameworks = 'CoreMedia','MediaPlayer','AVFoundation','AVKit','JavaScriptCore','GLKit','OpenGLES','CoreText','QuartzCore','CoreGraphics'
