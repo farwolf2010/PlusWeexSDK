@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.2"
+  s.version      = "1.0.3"
 
   s.summary      = "WeexSDK Source."
 
@@ -38,7 +38,7 @@ Pod::Spec.new do |s|
   # }
 
   # use for playground
-  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.2" }
+  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.3" }
 
   s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
                     'weex_core/Source/base/**/*.{h,hpp,m,mm,c,cpp,cc}',
@@ -123,7 +123,7 @@ Pod::Spec.new do |s|
   # 0.21.0 版本开始不再需要 native-bundle-main.js
   s.resources = 'ios/sdk/WeexSDK/Resources/*.js','ios/sdk/WeexSDK/Resources/wx_load_error@3x.png'
 
-  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/WeexSDK'" }
+  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/PlusWeexSDK'" }
   s.requires_arc = true
   s.prefix_header_file = 'ios/sdk/WeexSDK/Sources/Supporting Files/WeexSDK-Prefix.pch'
 
