@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.8"
+  s.version      = "1.0.9"
 
   s.summary      = "WeexSDK Source."
 
@@ -38,29 +38,17 @@ Pod::Spec.new do |s|
   # }
 
   # use for playground
-  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.8" }
-
+  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.9" }
   s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
-                    'io/weex_core/Source/base/**/*.{h,hpp,m,mm,c,cpp,cc}',
-                    'ios/weex_core/Source/core/**/*.{h,hpp,m,mm,c,cpp,cc}',
-                    'ios/weex_core/Source/wson/**/*.{h,hpp,m,mm,c,cpp,cc}',
-                    'ios/weex_core/Source/third_party/**/*.{h,hpp,m,mm,c,cpp,cc}',
-                    'ios/weex_core/Source/include/**/*.{h,hpp,m,mm,c,cpp,cc}'
-  s.exclude_files = 'ios/weex_core/Source/**/*android.{h,hpp,m,mm,c,cpp,cc}',
-                    'ios/weex_core/Source/base/android',
-                    'ios/weex_core/Source/base/base64',
-                    'ios/weex_core/Source/base/crash',
-                    'ios/weex_core/Source/base/utils',
-                    'ios/weex_core/Source/base/thread',
-                    'ios/weex_core/Source/base/third_party',
-                    'ios/weex_core/Source/base/message_loop',
-                    'ios/weex_core/Source/base/time_point.*',
-                    'ios/weex_core/Source/base/time_utils.*',
-                    'ios/weex_core/Source/base/time_unit.*',
-                    'ios/weex_core/Source/third_party/IPC',
-                    'ios/weex_core/Source/core/network/android/',
-                    'ios/weex_core/Source/include/JavaScriptCore/',
-                    'ios/weex_core/Source/include/wtf'
+                   'ios/weex_core/Source/**/*.{h,hpp,m,mm,c,cpp,cc}'
+  # s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
+  #                   'io/weex_core/Source/base/**/*.{h,hpp,m,mm,c,cpp,cc}',
+  #                   'ios/weex_core/Source/core/**/*.{h,hpp,m,mm,c,cpp,cc}',
+  #                   'ios/weex_core/Source/wson/**/*.{h,hpp,m,mm,c,cpp,cc}',
+  #                   'ios/weex_core/Source/third_party/**/*.{h,hpp,m,mm,c,cpp,cc}',
+  #                   'ios/weex_core/Source/include/**/*.{h,hpp,m,mm,c,cpp,cc}'
+  # s.exclude_files = 'ios/weex_core/Source/**/*android.{h,hpp,m,mm,c,cpp,cc}'
+                
 
   s.private_header_files = 'ios/sdk/WeexSDK/Sources/Component/RecycleList/WXJSASTParser.h'
   s.public_header_files = 'ios/sdk/WeexSDK/Sources/WeexSDK.h',
@@ -123,7 +111,7 @@ Pod::Spec.new do |s|
   # 0.21.0 版本开始不再需要 native-bundle-main.js
   s.resources = 'ios/sdk/WeexSDK/Resources/*.js','ios/sdk/WeexSDK/Resources/wx_load_error@3x.png'
 
-  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => "'$(PODS_ROOT)/PlusWeexSDK'",'USER_HEADER_SEARCH_PATHS' => '${PODS_TARGET_SRCROOT}/ios/weex_core/Source/'}
+  s.user_target_xcconfig  = { 'FRAMEWORK_SEARCH_PATHS' => '$(PODS_ROOT)/PlusWeexSDK','USER_HEADER_SEARCH_PATHS' => '${PODS_TARGET_SRCROOT}/ios/weex_core/Source/'}
   s.requires_arc = true
   s.prefix_header_file = 'ios/sdk/WeexSDK/Sources/Supporting Files/WeexSDK-Prefix.pch'
 
