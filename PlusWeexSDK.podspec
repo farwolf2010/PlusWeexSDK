@@ -4,14 +4,14 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.10"
+  s.version      = "1.0.12"
 
   s.summary      = "WeexSDK Source."
 
   s.description  = <<-DESC
                    A framework for building Mobile cross-platform UI
                    DESC
-  s.homepage     = "https://github.com/farwolf2010/"
+  s.homepage     = "https://weexplus.github.io/doc/"
   s.license = {
     :type => 'Copyright',
     :text => <<-LICENSE
