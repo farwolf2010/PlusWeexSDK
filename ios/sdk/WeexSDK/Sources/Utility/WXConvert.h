@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,10 @@
 
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
-#import "WXLog.h"
-#import "WXType.h"
+#import <PlusWeexSDK/WXLog.h>
+#import <PlusWeexSDK/WXType.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @class WXLength;
 @class WXBoxShadow;
@@ -103,3 +105,5 @@ typedef BOOL WXClipType;
 + (WXPixelType)WXPixelType:(id)value DEPRECATED_MSG_ATTRIBUTE("Use [WXConvert WXPixelType:scaleFactor:] instead");
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,15 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "WXInvocationConfig.h"
+#import <PlusWeexSDK/WXInvocationConfig.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface WXComponentConfig : WXInvocationConfig
 
-@property (nonatomic, strong) NSDictionary *properties;
+@property (nonatomic, strong) NSDictionary * _Nullable properties;
 
-- (instancetype)initWithName:(NSString *)name class:(NSString *)clazz pros:(NSDictionary *)pros;
+- (instancetype)initWithName:(NSString *)name class:(NSString *)clazz pros:(NSDictionary * _Nullable)pros;
 
 @end
 
@@ -48,7 +50,7 @@
  * @param clazz The WXComponent subclass to register
  * @param pros The component properties to register
  */
-+ (void)registerComponent:(NSString *)name withClass:(Class)clazz withPros:(NSDictionary *)pros;
++ (void)registerComponent:(NSString *)name withClass:(Class)clazz withPros:(NSDictionary * _Nullable)pros;
 
 /**
  * @abstract Register a list of components
@@ -58,6 +60,8 @@
 
 + (NSMutableDictionary *)componentMethodMapsWithName:(NSString *)name;
 + (NSMutableDictionary *)componentSelectorMapsWithName:(NSString *)name;
+
++ (SEL)methodWithComponentName:(NSString *)name withMethod:(NSString *)method isSync:(BOOL *)isSync;
 
 + (SEL)methodWithComponentName:(NSString *)name withMethod:(NSString *)method;
 
@@ -82,3 +86,5 @@
 
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,10 @@
 
 
 #import <Foundation/Foundation.h>
-#import "WXResourceRequest.h"
-#import "WXResourceResponse.h"
+#import <PlusWeexSDK/WXResourceRequest.h>
+#import <PlusWeexSDK/WXResourceResponse.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @protocol WXResourceRequestDelegate <NSObject>
 
@@ -28,17 +30,17 @@
 - (void)request:(WXResourceRequest *)request didSendData:(unsigned long long)bytesSent totalBytesToBeSent:(unsigned long long)totalBytesToBeSent;
 
 // Tells the delegate that the request received the initial reply (headers) from the server.
-- (void)request:(WXResourceRequest *)request didReceiveResponse:(WXResourceResponse *)response;
+- (void)request:(WXResourceRequest *)request didReceiveResponse:(WXResourceResponse * _Nullable)response;
 
 // Tells the delegate that the request has received some of the expected data.
-- (void)request:(WXResourceRequest *)request didReceiveData:(NSData *)data;
+- (void)request:(WXResourceRequest *)request didReceiveData:(NSData * _Nullable)data;
 
 // Tells the delegate that the request finished transferring data.
 - (void)requestDidFinishLoading:(WXResourceRequest *)request;
 
 // Tells the delegate that the request failed to load successfully.
-- (void)request:(WXResourceRequest *)request didFailWithError:(NSError *)error;
-    
+- (void)request:(WXResourceRequest *)request didFailWithError:(NSError * _Nullable)error;
+
 // Tells the delegate that when complete statistics information has been collected for the task.
 #ifdef __IPHONE_10_0
 - (void)request:(WXResourceRequest *)request didFinishCollectingMetrics:(NSURLSessionTaskMetrics *)metrics API_AVAILABLE(macosx(10.12), ios(10.0), watchos(3.0), tvos(10.0));
@@ -58,4 +60,4 @@
 
 @end
 
-
+NS_ASSUME_NONNULL_END

@@ -18,8 +18,9 @@
  */
 
 #import "WXComponent.h"
+#import <WebKit/WebKit.h>
 
-@interface WXWebComponent : WXComponent<UIWebViewDelegate>
+@interface WXWebComponent : WXComponent<WKNavigationDelegate>
 
 - (void)notifyWebview:(NSDictionary *) data;
 
@@ -30,10 +31,12 @@
 - (void)goBack;
 
 - (void)goForward;
+
 //zjr
 -(void)excuteJs:(NSString*)js;
 
 - (void)loadURL:(NSString *)url;
 
 - (void) setSource:(NSString *)source;
+
 @end

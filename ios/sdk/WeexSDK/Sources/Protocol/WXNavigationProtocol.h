@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,9 @@
  * under the License.
  */
 
-#import "WXModuleProtocol.h"
+#import <PlusWeexSDK/WXModuleProtocol.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 /**
  * This enum is used to define the position of navbar item.
@@ -82,7 +84,7 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
  */
 - (void)setNavigationItemWithParam:(NSDictionary *)param
                           position:(WXNavigationItemPosition)position
-                        completion:(WXNavigationResultBlock)block
+                        completion:(nullable WXNavigationResultBlock)block
                      withContainer:(UIViewController *)container;
 
 /**
@@ -99,7 +101,7 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
  */
 - (void)clearNavigationItemWithParam:(NSDictionary *)param
                             position:(WXNavigationItemPosition)position
-                          completion:(WXNavigationResultBlock)block
+                          completion:(nullable WXNavigationResultBlock)block
                        withContainer:(UIViewController *)container;
 
 /**
@@ -113,7 +115,7 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
  *
  */
 - (void)pushViewControllerWithParam:(NSDictionary *)param
-                         completion:(WXNavigationResultBlock)block
+                         completion:(nullable WXNavigationResultBlock)block
                       withContainer:(UIViewController *)container;
 
 /**
@@ -127,12 +129,12 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
  *
  */
 - (void)popViewControllerWithParam:(NSDictionary *)param
-                        completion:(WXNavigationResultBlock)block
+                        completion:(nullable WXNavigationResultBlock)block
                      withContainer:(UIViewController *)container;
 
-    
+
 @optional
-    
+
 /**
  * @abstract open the resource at the specified URL which supports many common schemes, including the http, https, tel and mailto schemes.
  *
@@ -145,8 +147,8 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
  * @param container The target controller.
  *
  */
-- (void)open:(NSDictionary *)param success:(WXModuleCallback)success
-                                   failure:(WXModuleCallback)failure
+- (void)open:(NSDictionary *)param success:(nullable WXModuleCallback)success
+                                   failure:(nullable WXModuleCallback)failure
                              withContainer:(UIViewController *)container;
 
 
@@ -162,7 +164,9 @@ typedef void (^WXNavigationResultBlock)(NSString *code, NSDictionary * responseD
   * @param container The target controller.
   *
   */
-- (void)close:(NSDictionary *)param success:(WXModuleCallback)success
-                                   failure:(WXModuleCallback)failure
+- (void)close:(NSDictionary *)param success:(nullable WXModuleCallback)success
+                                   failure:(nullable WXModuleCallback)failure
                              withContainer:(UIViewController *)container;
 @end
+
+NS_ASSUME_NONNULL_END

@@ -135,6 +135,13 @@
     _embedInstance.pageObject = self.weexInstance.viewController;
     _embedInstance.viewController = self.weexInstance.viewController;
     
+    if (self.invertForDarkScheme) {
+        [_embedInstance setAutoInvertingBehavior:WXAutoInvertingBehaviorAlways];
+    }
+    else {
+        [_embedInstance setAutoInvertingBehavior:WXAutoInvertingBehaviorNever];
+    }
+    
     NSString *newURL = nil;
     
     if ([sourceURL.absoluteString rangeOfString:@"?"].location != NSNotFound) {
@@ -143,9 +150,8 @@
     else {
         newURL = [NSString stringWithFormat:@"%@?random=%d", sourceURL.absoluteString, arc4random()];
     }
-    //zjr add
     [self loadUrl:newURL instance:_embedInstance sourceurl:sourceURL];
-    //    [_embedInstance renderWithURL:[NSURL URLWithString:newURL] options:@{@"bundleUrl":[sourceURL absoluteString]} data:nil];
+//    [_embedInstance renderWithURL:[NSURL URLWithString:newURL] options:@{@"bundleUrl":[sourceURL absoluteString]} data:nil];
     [_embedInstance.apmInstance setProperty:KEY_PAGE_PROPERTIES_INSTANCE_TYPE withValue:@"embed"];
     [_embedInstance.apmInstance setProperty:KEY_PAGE_PROPERTIES_PARENT_PAGE withValue:_embedInstance.parentInstance.pageName];
     [self.weexInstance.apmInstance updateDiffStats:KEY_PAGE_STATS_EMBED_COUNT withDiffValue:1];

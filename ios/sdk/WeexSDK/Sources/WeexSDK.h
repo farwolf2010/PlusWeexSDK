@@ -1,5 +1,5 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one 
+* Licensed to the Apache Software Foundation (ASF) under one
 * or more contributor license agreements.  See the NOTICE file
 * distributed with this work for additional information
 * regarding copyright ownership.  The ASF licenses this file
@@ -17,73 +17,85 @@
 * under the License.
  */
 
-#ifdef __OBJC__
+#import <UIKit/UIKit.h>
 
-#import "style.h"
-#import "layout.h"
-#import "flex_enum.h"
-#import "WXWebSocketHandler.h"
-#import "WXVoiceOverModule.h"
-#import "WXView.h"
-#import "WXValidateProtocol.h"
-#import "WXUtility.h"
-#import "WXURLRewriteProtocol.h"
-#import "WXType.h"
-#import "WXScrollerProtocol.h"
-#import "WXScrollerComponent.h"
-#import "WXSDKManager.h"
-#import "WXSDKInstance.h"
-#import "WXSDKError.h"
-#import "WXSDKEngine.h"
-#import "WXRootViewController.h"
-#import "WXRichText.h"
-#import "WXResourceResponse.h"
-#import "WXResourceRequestHandler.h"
-#import "WXResourceRequest.h"
-#import "WXResourceLoader.h"
-#import "WXRefreshComponent.h"
-#import "WXRecyclerComponent.h"
-#import "WXPrerenderManager.h"
-#import "WXPageEventNotifyEvent.h"
-#import "WXNetworkProtocol.h"
-#import "WXNavigationProtocol.h"
-#import "WXMonitor.h"
-#import "WXModuleProtocol.h"
-#import "WXModalUIModule.h"
-#import "WXLog.h"
-#import "WXListComponent.h"
-#import "WXJSFrameworkLoadProtocol.h"
-#import "WXJSExceptionProtocol.h"
-#import "WXJSExceptionInfo.h"
-#import "WXInvocationConfig.h"
-#import "WXIndicatorComponent.h"
-#import "WXImgLoaderProtocol.h"
-#import "WXExtendCallNativeProtocol.h"
-#import "WXExceptionUtils.h"
-#import "WXEventModuleProtocol.h"
-#import "WXErrorView.h"
-#import "WXDefine.h"
-#import "WXDebugTool.h"
-#import "WXDataRenderHandler.h"
-#import "WXConvertUtility.h"
-#import "WXConvert.h"
-#import "WXConfigCenterProtocol.h"
-#import "WXComponentManager.h"
-#import "WXComponentFactory.h"
-#import "WXComponent.h"
-#import "WXComponent+Layout.h"
-#import "WXBridgeProtocol.h"
-#import "WXBridgeMethod.h"
-#import "WXBridgeManager.h"
-#import "WXBaseViewController.h"
-#import "WXAppMonitorProtocol.h"
-#import "WXAppConfiguration.h"
-#import "WXApmProtocol.h"
-#import "WXApmForInstance.h"
-#import "WXAnalyzerProtocol.h"
-#import "WXAnalyzerCenter.h"
-#import "WXAComponent.h"
-#import "NSObject+WXSwizzle.h"
-#import "JSContext+Weex.h"
+FOUNDATION_EXPORT double WeexSDKVersionNumber;
 
-#endif /* __OBJC__ */
+FOUNDATION_EXPORT const unsigned char WeexSDKVersionString[];
+
+#import <PlusWeexSDK/style.h>
+//#import <PlusWeexSDK/reactor_page.h>
+#import <PlusWeexSDK/layout.h>
+#import <PlusWeexSDK/flex_enum.h>
+#import <PlusWeexSDK/eagle_bridge.h>
+#import <PlusWeexSDK/WXWebSocketHandler.h>
+#import <PlusWeexSDK/WXVoiceOverModule.h>
+#import <PlusWeexSDK/WXView.h>
+#import <PlusWeexSDK/WXValidateProtocol.h>
+#import <PlusWeexSDK/WXUtility.h>
+#import <PlusWeexSDK/WXURLRewriteProtocol.h>
+#import <PlusWeexSDK/WXType.h>
+#import <PlusWeexSDK/WXStreamModule.h>
+#import <PlusWeexSDK/WXScrollerProtocol.h>
+#import <PlusWeexSDK/WXScrollerComponent.h>
+#import <PlusWeexSDK/WXSDKManager.h>
+#import <PlusWeexSDK/WXSDKInstance.h>
+#import <PlusWeexSDK/WXSDKError.h>
+#import <PlusWeexSDK/WXSDKEngine.h>
+#import <PlusWeexSDK/WXRootViewController.h>
+#import <PlusWeexSDK/WXRichText.h>
+#import <PlusWeexSDK/WXResourceResponse.h>
+#import <PlusWeexSDK/WXResourceRequestHandler.h>
+#import <PlusWeexSDK/WXResourceRequest.h>
+#import <PlusWeexSDK/WXResourceLoader.h>
+#import <PlusWeexSDK/WXRefreshComponent.h>
+#import <PlusWeexSDK/WXRecyclerComponent.h>
+#import <PlusWeexSDK/WXReactorProtocol.h>
+#import <PlusWeexSDK/WXPrerenderManager.h>
+#import <PlusWeexSDK/WXPageEventNotifyEvent.h>
+#import <PlusWeexSDK/WXNetworkProtocol.h>
+#import <PlusWeexSDK/WXNavigationProtocol.h>
+#import <PlusWeexSDK/WXNavigationDefaultImpl.h>
+#import <PlusWeexSDK/WXMonitor.h>
+#import <PlusWeexSDK/WXModuleProtocol.h>
+//#import <PlusWeexSDK/WXModuleFactory.h>
+#import <PlusWeexSDK/WXModalUIModule.h>
+#import <PlusWeexSDK/WXLog.h>
+#import <PlusWeexSDK/WXListComponent.h>
+#import <PlusWeexSDK/WXJSFrameworkLoadProtocol.h>
+#import <PlusWeexSDK/WXJSExceptionProtocol.h>
+#import <PlusWeexSDK/WXJSExceptionInfo.h>
+#import <PlusWeexSDK/WXInvocationConfig.h>
+#import <PlusWeexSDK/WXIndicatorComponent.h>
+#import <PlusWeexSDK/WXImgLoaderProtocol.h>
+//#import <PlusWeexSDK/WXHandlerFactory.h>
+#import <PlusWeexSDK/WXExtendCallNativeProtocol.h>
+#import <PlusWeexSDK/WXExceptionUtils.h>
+#import <PlusWeexSDK/WXEventModuleProtocol.h>
+#import <PlusWeexSDK/WXErrorView.h>
+//#import <PlusWeexSDK/WXEaglePluginManager.h>
+//#import <PlusWeexSDK/WXEaglePlugin.h>
+#import <PlusWeexSDK/WXDefine.h>
+#import <PlusWeexSDK/WXDebugTool.h>
+#import <PlusWeexSDK/WXDarkSchemeProtocol.h>
+#import <PlusWeexSDK/WXConvertUtility.h>
+#import <PlusWeexSDK/WXConvert.h>
+#import <PlusWeexSDK/WXConfigCenterProtocol.h>
+#import <PlusWeexSDK/WXComponentManager.h>
+#import <PlusWeexSDK/WXComponentFactory.h>
+#import <PlusWeexSDK/WXComponent.h>
+#import <PlusWeexSDK/WXComponent+Layout.h>
+#import <PlusWeexSDK/WXBridgeProtocol.h>
+#import <PlusWeexSDK/WXBridgeMethod.h>
+#import <PlusWeexSDK/WXBridgeManager.h>
+#import <PlusWeexSDK/WXBaseViewController.h>
+#import <PlusWeexSDK/WXAppMonitorProtocol.h>
+#import <PlusWeexSDK/WXAppConfiguration.h>
+#import <PlusWeexSDK/WXApmProtocol.h>
+#import <PlusWeexSDK/WXApmForInstance.h>
+#import <PlusWeexSDK/WXAnalyzerProtocol.h>
+#import <PlusWeexSDK/WXAnalyzerCenter.h>
+#import <PlusWeexSDK/WXAComponent.h>
+#import <PlusWeexSDK/NSObject+WXSwizzle.h>
+#import <PlusWeexSDK/JSContext+Weex.h>
+

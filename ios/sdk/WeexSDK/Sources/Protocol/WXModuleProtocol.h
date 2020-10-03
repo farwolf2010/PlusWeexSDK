@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,8 +18,10 @@
  */
 
 #import <UIKit/UIKit.h>
-#import "WXDefine.h"
-#import "WXSDKInstance.h"
+#import <PlusWeexSDK/WXDefine.h>
+#import <PlusWeexSDK/WXSDKInstance.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 #define MSG_SUCCESS     @"WX_SUCCESS"
 #define MSG_NO_HANDLER  @"WX_NO_HANDLER"
@@ -34,16 +36,16 @@
  * @abstract the module callback , result can be string or dictionary.
  * @discussion callback data to js, the id of callback function will be removed to save memory.
  */
-typedef void (^WXModuleCallback)(id result);
+typedef void (^WXModuleCallback)(id _Nullable result);
 //DEPRECATED_MSG_ATTRIBUTE("use WXModuleKeepAliveCallback, you can specify keep the callback or not, if keeped, it can be called multi times, or it will be removed after called.")
 
 /**
  * @abstract the module callback , result can be string or dictionary.
  * @discussion callback data to js, you can specify the keepAlive parameter to keep callback function id keepalive or not. If the keepAlive is true, it won't be removed until instance destroyed, so you can call it repetitious.
  */
-typedef void (^WXModuleKeepAliveCallback)(id result, BOOL keepAlive);
+typedef void (^WXModuleKeepAliveCallback)(id _Nullable result, BOOL keepAlive);
 
-#define WX_EXPORT_MODULE(module) 
+#define WX_EXPORT_MODULE(module)
 
 @optional
 
@@ -63,7 +65,7 @@ typedef void (^WXModuleKeepAliveCallback)(id result, BOOL keepAlive);
  *
  *  @return  thread that module's methods will be invoked on
  *
- *  @discussion the implementation is optional. If you want to execute module actions in the special thread, you can create a new one. 
+ *  @discussion the implementation is optional. If you want to execute module actions in the special thread, you can create a new one.
  *  If `targetExecuteQueue` is implemented,  the queue returned will be respected first.
  *  Default is the main thread.
  *
@@ -76,3 +78,5 @@ typedef void (^WXModuleKeepAliveCallback)(id result, BOOL keepAlive);
 @property (nonatomic, weak) WXSDKInstance *weexInstance;
 
 @end
+
+NS_ASSUME_NONNULL_END

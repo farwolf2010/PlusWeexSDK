@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,10 +19,11 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "WXDefine.h"
-#import "WXType.h"
-#import "WXLog.h"
-#import "WXSDKInstance.h"
+
+#import <PlusWeexSDK/WXDefine.h>
+#import <PlusWeexSDK/WXType.h>
+#import <PlusWeexSDK/WXLog.h>
+#import <PlusWeexSDK/WXSDKInstance.h>
 
 // The default screen width which helps us to calculate the real size or scale in different devices.
 static const CGFloat WXDefaultScreenWidth = 750.0;
@@ -92,7 +93,7 @@ __WXPointEqualToPoint(CGPoint point1, CGPoint point2)
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 /**
  * @abstract execute asynchronous action block on the main thread.
  *
@@ -120,7 +121,7 @@ void WXSwizzleInstanceMethod(_Nonnull Class className, _Nonnull SEL original, _N
 void WXSwizzleInstanceMethodWithBlock(_Nonnull Class className, _Nonnull SEL original, _Nonnull id block, _Nonnull SEL replaced);
 
 _Nonnull SEL WXSwizzledSelectorForSelector(_Nonnull SEL selector);
-    
+
 #ifdef __cplusplus
 }
 #endif
@@ -130,12 +131,22 @@ _Nonnull SEL WXSwizzledSelectorForSelector(_Nonnull SEL selector);
 + (void)performBlock:(void (^_Nonnull)(void))block onThread:(NSThread *_Nonnull)thread;
 
 /**
+ * @abstract Check if system is in dark mode.
+ *
+ * @return Boolean
+ *
+ */
++ (BOOL)isSystemInDarkScheme;
+
+/**
  * @abstract Returns the environment of current application, you can get some necessary properties such as appVersion、sdkVersion、appName etc.
  *
  * @return A dictionary object which contains these properties.
  *
  */
 + (NSDictionary *_Nonnull)getEnvironment;
++ (NSDictionary *_Nonnull)getEnvironmentForJSContext;
++ (BOOL)isEnvironmentUsingDarkScheme;
 
 + (NSDictionary *_Nonnull)getDebugEnvironment;
 
@@ -158,6 +169,14 @@ _Nonnull SEL WXSwizzledSelectorForSelector(_Nonnull SEL selector);
  *
  */
 + (id _Nullable)objectFromJSON:(NSString * _Nonnull)json;
+
+/**
+ Convert all sub-structure objects of source to immutable container.
+
+ @param source Source object.
+ @return Converted object using immutable container.
+ */
++ (id _Nullable)convertContainerToImmutable:(id _Nullable)source;
 
 #define WXDecodeJson(json)  [WXUtility objectFromJSON:json]
 
@@ -272,6 +291,11 @@ _Nonnull SEL WXSwizzledSelectorForSelector(_Nonnull SEL selector);
  */
 + (CGFloat)defaultPixelScaleFactor;
 
+/**
+ * @return true if the device is iPad
+ */
++ (BOOL)deviceIsiPad;
+
 #if defined __cplusplus
 extern "C" {
 #endif
@@ -298,11 +322,11 @@ CGFloat WXFloorPixelValue(CGFloat value);
  *
  */
 CGFloat WXCeilPixelValue(CGFloat value);
-    
+
 #if defined __cplusplus
 };
 #endif
-    
+
 /**
  *  @abstract check whether the file is exist
  *
@@ -433,7 +457,7 @@ CGPoint WXPixelPointResize(CGPoint value) DEPRECATED_MSG_ATTRIBUTE("Use WXPixelS
 #if defined __cplusplus
 extern "C" {
 #endif
-    
+
 /**
  *  @abstract compare float a and b, if a equal b, return true,or reture false.
  *
@@ -493,9 +517,26 @@ BOOL WXFloatGreaterThanWithPrecision(CGFloat a,CGFloat b,double precision);
  */
 + (NSData *_Nonnull)base64DictToData:(NSDictionary *_Nullable)base64Dict;
 
+/**
+*  @abstract Switch for RTL.
+*
+*/
 + (void)setEnableRTLLayoutDirection:(BOOL)value;
-
 + (BOOL)enableRTLLayoutDirection;
+
+/**
+*  @abstract Switch for dark mode support.
+*
+*/
++ (void)setDarkSchemeSupportEnable:(BOOL)value;
++ (BOOL)isDarkSchemeSupportEnabled;
+
+/**
+*  @abstract Switch for adapt iPad.
+*
+*/
++ (void)setEnableAdaptiveLayout:(BOOL)value;
++ (BOOL)enableAdaptiveLayout;
 
 + (long) getUnixFixTimeMillis;
 

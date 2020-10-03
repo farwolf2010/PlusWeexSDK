@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,7 +18,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "WXType.h"
+#import <PlusWeexSDK/WXType.h>
 
 @class WXSDKInstance;
 
@@ -26,6 +26,17 @@ typedef enum : NSUInteger {
     WXDisplayTypeNone,
     WXDisplayTypeBlock
 } WXDisplayType;
+
+typedef enum : NSUInteger {
+    WXComponentViewCreatedCallback,
+    WXComponentUpdateStylesCallback
+} WXComponentCallbackType;
+
+typedef enum : NSUInteger {
+    WXColorSceneBackground,
+    WXColorSceneText,
+    WXColorSceneUnknown,
+} WXColorScene;
 
 /**
  * @abstract the component callback , result can be string or dictionary.
@@ -129,7 +140,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly, assign) CGRect calculatedFrame;
 
 /**
- * @abstract Tell if component's view frame will keep synchronized with calculatedFrame. 
+ * @abstract Tell if component's view frame will keep synchronized with calculatedFrame.
  * Default Value is YES.
  */
 @property(nonatomic, assign) BOOL isViewFrameSyncWithCalculated;
@@ -168,6 +179,16 @@ NS_ASSUME_NONNULL_BEGIN
  *
  */
 - (nullable CGSize (^)(CGSize constrainedSize))measureBlock;
+
+/**
+ *  The callback of the component
+ *
+ *  When the callbackType is WXComponentViewCreatedCallback, the result type is UIView.
+ *  When the callbackType is WXComponentUpdateStylesCallback, the result type is NSDictionary.
+ *
+ *  @return A block that takes component, callbackType and a result.
+ **/
+@property (nonatomic, copy) void (^componentCallback)(WXComponent *component, WXComponentCallbackType callbackType, id _Nullable result);
 
 /**
  * @abstract Called on main thread when the component has just laid out.
@@ -287,7 +308,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)fireEvent:(NSString *)eventName params:(nullable NSDictionary *)params;
 
 /**
- * @abstract Fire an event to the component and tell Javascript which value has been changed. 
+ * @abstract Fire an event to the component and tell Javascript which value has been changed.
  * Used for two-way data binding.
  *
  * @param eventName The name of the event to fire
@@ -349,6 +370,8 @@ NS_ASSUME_NONNULL_BEGIN
 /// @name Display
 ///--------------------------------------
 
+@property (nonatomic, assign) BOOL invertForDarkScheme;
+
 @property (nonatomic, assign) WXDisplayType displayType;
 
 /**
@@ -364,10 +387,20 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)needsDrawRect;
 
 /**
+ * @abstract Fired on instance scheme did changed.
+ */
+- (void)schemeDidChange:(NSString*)scheme;
+
+/**
+ * @abstract Hint used for better do color invert in dark mode.
+ */
+- (WXColorScene)colorSceneType;
+
+/**
  * @abstract Draws the component’s image within the passed-in rectangle.
- * @parameter rect The rectangle which is the entire visible bounds of your component. 
+ * @parameter rect The rectangle which is the entire visible bounds of your component.
  * @return A UIImage containing the contents of the current bitmap graphics context.
- * @discussion 
+ * @discussion
  * Subclasses that use technologies such as Core Graphics and UIKit to draw their own component’s content should override this method and implement their drawing code there. You do not need to override this method if your component sets its content in superclass's way.
  * By the time this method is called, UIKit has configured the drawing environment appropriately for your view and you can simply call whatever drawing methods and functions you need to render your content. Specifically, Weex creates and configures a graphics context for drawing and adjusts the transform of that context so that its origin matches the origin of your components’s bounds rectangle. You can get a reference to the graphics context using the `UIGraphicsGetCurrentContext` function, but do not establish a strong reference to the graphics context because it can change between calls to the drawRect: method.
  * If you already have an image that represents the content of the component, then you should just return the image and do no drawing, otherwise you should draw your content in the current context and return nil.
@@ -422,6 +455,15 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)updateBindingData:(NSDictionary *)data;
 
+///--------------------------------------
+/// @name Heron
+///--------------------------------------
+
+/**
+ * @abstract Unload native view of embeded component in Heron mode.
+ */
+- (void)unloadNativeView;
+
 @end
 
 @interface WXComponent (Deprecated)
@@ -462,3 +504,4 @@ typedef void(^WXDisplayCompletionBlock)(CALayer *layer, BOOL finished);
 @end
 
 NS_ASSUME_NONNULL_END
+

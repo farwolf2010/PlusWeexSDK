@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,9 @@
  * under the License.
  */
 
-#import "WXModuleProtocol.h"
+#import <PlusWeexSDK/WXModuleProtocol.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 /**  dimenValue  */
 #define BIZTYPE             @"bizType"
@@ -74,10 +76,12 @@
 
 - (void)commitAppMonitorArgs:(NSDictionary *)args;
 
-- (void)commitAppMonitorAlarm:(NSString *)pageName monitorPoint:(NSString *)monitorPoint success:(BOOL)success errorCode:(NSString *)errorCode errorMsg:(NSString *)errorMsg arg:(NSString *)arg;
+- (void)commitAppMonitorAlarm:(NSString *)pageName monitorPoint:(NSString *)monitorPoint success:(BOOL)success errorCode:(NSString *)errorCode errorMsg:(NSString *)errorMsg arg:(NSString * _Nullable)arg;
 
 @optional
 
-- (void)commitMonitorWithPage:(NSString *)pageName monitorPoint:(NSString *)monitorPoint args:(NSDictionary *)args;
+- (void)commitMonitorWithPage:(NSString *)pageName monitorPoint:(NSString *)monitorPoint args:(NSDictionary * _Nullable)args;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -28,5 +28,5 @@ void WXAssertInternal(NSString *func, NSString *file, int lineNum, NSString *for
     va_end(args);
     
     WXLogError(@"%@", message);
-    [[NSAssertionHandler currentHandler] handleFailureInFunction:func file:file lineNumber:lineNum description:format, message];
+//    [[NSAssertionHandler currentHandler] handleFailureInFunction:func file:file lineNumber:lineNum description:format, message];
 }

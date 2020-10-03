@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.12"
+  s.version      = "1.0.16"
 
   s.summary      = "WeexSDK Source."
 
@@ -48,6 +48,19 @@ Pod::Spec.new do |s|
   #                   'ios/weex_core/Source/third_party/**/*.{h,hpp,m,mm,c,cpp,cc}',
   #                   'ios/weex_core/Source/include/**/*.{h,hpp,m,mm,c,cpp,cc}'
   # s.exclude_files = 'ios/weex_core/Source/**/*android.{h,hpp,m,mm,c,cpp,cc}'
+    s.exclude_files = 'ios/weex_core/Source/android/**/*{h,hpp,m,mm,c,cpp,cc}',
+                    'ios/weex_core/Source/**/*android.{h,hpp,m,mm,c,cpp,cc}',
+                    'ios/weex_core/Source/js_runtime',
+                    'ios/weex_core/Source/base/android',
+                    'ios/weex_core/Source/base/base64',
+                    'ios/weex_core/Source/base/crash',
+                    'ios/weex_core/Source/base/utils/Compatible.cpp',
+                    'ios/weex_core/Source/base/utils/ThreadLocker.cpp',
+                    'ios/weex_core/Source/core/parser/action_args_check.*',
+                    'ios/weex_core/Source/third_party/IPC',
+                    'ios/weex_core/Source/core/network/android/',
+                    'ios/weex_core/Source/include/JavaScriptCore/',
+                    'ios/weex_core/Source/include/wtf'
                 
 
   s.private_header_files = 'ios/sdk/WeexSDK/Sources/Component/RecycleList/WXJSASTParser.h'

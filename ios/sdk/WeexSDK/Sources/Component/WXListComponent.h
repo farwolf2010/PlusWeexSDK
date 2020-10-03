@@ -17,8 +17,12 @@
  * under the License.
  */
 
-#import "WXScrollerComponent.h"
+#import <PlusWeexSDK/WXScrollerComponent.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface WXListComponent : WXScrollerComponent
 
 @end
+
+NS_ASSUME_NONNULL_END

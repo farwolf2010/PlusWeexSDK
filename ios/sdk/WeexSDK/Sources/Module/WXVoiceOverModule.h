@@ -18,8 +18,12 @@
  */
 
 #import <Foundation/Foundation.h>
-#import "WXModuleProtocol.h"
+#import <PlusWeexSDK/WXModuleProtocol.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @interface WXVoiceOverModule : NSObject<WXModuleProtocol>
 
 @end
+
+NS_ASSUME_NONNULL_END

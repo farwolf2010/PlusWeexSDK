@@ -114,7 +114,6 @@
     NSString * _alwaysScrollableHorizontal;
     BOOL _bounces;
     
-    
     // refreshForAppear: load more when refresh component begin appear(if scroll is dragging or decelerating, should delay)
     // refreshForWholeVisible: load more until the whole refresh component visible
     NSString *_refreshType;
@@ -202,7 +201,7 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
         _listenLoadMore = [events containsObject:@"loadmore"];
         _scrollable = attributes[@"scrollable"] ? [WXConvert BOOL:attributes[@"scrollable"]] : YES;
         _offsetAccuracy = attributes[@"offsetAccuracy"] ? [WXConvert WXPixelType:attributes[@"offsetAccuracy"] scaleFactor:self.weexInstance.pixelScaleFactor] : 0;
-        
+
         /* let scroller fill the rest space if it is a child component and has no fixed height & width.
          WeexCore also does this in C++, but only for "scroller" and "list" not including for
          subclasses of WXScrollerComponent. */
@@ -227,7 +226,11 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
         //may be list
         if ([@"scroller" isEqualToString:type]) {
             [weexInstance.apmInstance updateDiffStats:KEY_PAGE_STATS_SCROLLER_NUM withDiffValue:1];
-        }        
+        }
+
+        if (weexInstance.instanceCallback) {
+            weexInstance.instanceCallback(weexInstance, WXScrollerComponentCreatedCallback, self);
+        }
     }
     
     return self;
@@ -252,7 +255,6 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
     scrollView.scrollEnabled = _scrollable;
     scrollView.pagingEnabled = _pagingEnabled;
     
-    
     if (scrollView.bounces != _bounces) {
         scrollView.bounces = _bounces;
     }
@@ -268,8 +270,6 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
         if ([scrollView respondsToSelector:@selector(setContentInsetAdjustmentBehavior:)]) {
             scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
         }
-    } else {
-        // Fallback on earlier versions
     }
     
     if (self.ancestorScroller) {
@@ -937,8 +937,6 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
             if( offset.y <= _refreshComponent.calculatedFrame.size.height ) {
                 [self loadMoreIfNeed];
             }
-        } else if (velocity.y > 0) {
-            // drop up
         }
     }
     
@@ -1153,6 +1151,11 @@ WX_EXPORT_METHOD(@selector(resetLoadmore))
             _flexCssNode->setParent(nullptr, _flexCssNode);
             _flexCssNode->calculateLayout(renderPageSize);
             _flexCssNode->setParent(parent, _flexCssNode);
+            
+            /* We must clear BFCs becuase we have set parent of _flexCSSNode to nullptr and
+             manually called its calculateLayout method. This will cause a non-bfc layout node
+             to have items in its BFCs vector. Later, a wild pointer may cause crash. */
+            _flexCssNode->clearBFCs();
             
             // set origin and size back
             _flexCssNode->rewriteLayoutResult(left, top, width, height);

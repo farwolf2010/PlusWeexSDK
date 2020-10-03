@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,8 +17,10 @@
  * under the License.
  */
 
-#import "WXModuleProtocol.h"
-#import "WXType.h"
+#import <PlusWeexSDK/WXModuleProtocol.h>
+#import <PlusWeexSDK/WXType.h>
+
+NS_ASSUME_NONNULL_BEGIN
 
 @protocol WXImageOperationProtocol <NSObject>
 
@@ -57,7 +59,7 @@ typedef NS_ENUM(NSInteger, WXImageLoaderCacheType) {
  *                 error : the error which has happened in download.
  *              finished : a Boolean value indicating whether download action has finished.
  */
-- (id<WXImageOperationProtocol>)downloadImageWithURL:(NSString *)url imageFrame:(CGRect)imageFrame userInfo:(NSDictionary *)options completed:(void(^)(UIImage *image,  NSError *error, BOOL finished))completedBlock;
+- (id<WXImageOperationProtocol>)downloadImageWithURL:(NSString *)url imageFrame:(CGRect)imageFrame userInfo:(NSDictionary * _Nullable)options completed:(void(^)(UIImage * _Nullable image,  NSError * _Nullable error, BOOL finished))completedBlock;
 
 @optional
 
@@ -81,10 +83,10 @@ typedef NS_ENUM(NSInteger, WXImageLoaderCacheType) {
  */
 - (void)setImageViewWithURL:(UIImageView*)imageView
                         url:(NSURL *)url
-           placeholderImage:(UIImage *)placeholder
-                    options:(NSDictionary*)options
-                   progress:(void(^)(NSInteger receivedSize, NSInteger expectedSize))progressBlock
-                  completed:(void(^)(UIImage *image, NSError *error, WXImageLoaderCacheType cacheType, NSURL *imageURL))completedBlock;
+           placeholderImage:(UIImage * _Nullable)placeholder
+                    options:(NSDictionary* _Nullable)options
+                   progress:(nullable void (^)(NSInteger receivedSize, NSInteger expectedSize))progressBlock
+                  completed:(nullable void(^)(UIImage *_Nullable image, NSError *_Nullable error, WXImageLoaderCacheType cacheType, NSURL *imageURL))completedBlock;
 
 /**
  * Cancel the current download image
@@ -92,3 +94,5 @@ typedef NS_ENUM(NSInteger, WXImageLoaderCacheType) {
 - (void)cancelCurrentImageLoad:(UIImageView*)imageView;
 
 @end
+
+NS_ASSUME_NONNULL_END

@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -49,15 +49,22 @@
 #import "WXJSCoreBridge.h"
 #import "WXSDKInstance_performance.h"
 #import "WXPageEventNotifyEvent.h"
+#import "WXConvertUtility.h"
 #import "WXCoreBridge.h"
-#import  "WXDataRenderHandler.h"
+#import "WXDarkSchemeProtocol.h"
+#import "WXDarkSchemeModule.h"
+#import <PlusWeexSDK/WXEaglePluginManager.h>
+#import "WXReactorProtocol.h"
 
-#define WEEX_LITE_URL_SUFFIX           @"wlasm"
+#define WEEX_RENDER_TYPE_PLATFORM       @"platform"
 
 NSString *const bundleUrlOptionKey = @"bundleUrl";
 NSString *const bundleResponseUrlOptionKey = @"bundleResponseUrl";
 
 NSTimeInterval JSLibInitTime = 0;
+
+static NSString* lastPageInfoLock = @"";
+static NSDictionary* lastPageInfo = nil;
 
 typedef enum : NSUInteger {
     WXLoadTypeNormal,
@@ -71,17 +78,17 @@ typedef enum : NSUInteger {
 {
     NSDictionary *_options;
     id _jsData;
-    
+
     WXResourceLoader *_mainBundleLoader;
     WXComponentManager *_componentManager;
-    WXRootView *_rootView;
+    UIView *_rootView;
     WXThreadSafeMutableDictionary *_moduleEventObservers;
     BOOL _performanceCommit;
     BOOL _debugJS;
-    id<WXBridgeProtocol> _instanceJavaScriptContext; // sandbox javaScript context    
-    CGFloat _defaultPixelScaleFactor;
-    BOOL _defaultDataRender;
+    id<WXBridgeProtocol> _instanceJavaScriptContext; // sandbox javaScript context
+    NSMutableDictionary *_moduleIntercepts;
 }
+
 //zjr
 -(void)addChildInstance:(WXSDKInstance*)instance
 {
@@ -110,41 +117,8 @@ typedef enum : NSUInteger {
 
 - (instancetype)init
 {
-    self = [super init];
-    if(self){
-        NSInteger instanceId = 0;
-        @synchronized(bundleUrlOptionKey) {
-            static NSInteger __instance = 0;
-            instanceId = __instance % (1024*1024);
-            __instance++;
-        }
-        _instanceId = [NSString stringWithFormat:@"%ld", (long)instanceId];
-        
-        // TODO self is retained here.
-        [WXSDKManager storeInstance:self forID:_instanceId];
-        
-        _bizType = @"";
-        _pageName = @"";
-
-        _performanceDict = [WXThreadSafeMutableDictionary new];
-        _moduleInstances = [WXThreadSafeMutableDictionary new];
-        _styleConfigs = [NSMutableDictionary new];
-        _attrConfigs = [NSMutableDictionary new];
-        _moduleEventObservers = [WXThreadSafeMutableDictionary new];
-        _trackComponent = NO;
-        _performanceCommit = NO;
-        
-        _performance = [[WXPerformance alloc] init];
-        _apmInstance = [[WXApmForInstance alloc] init];
-        
-        _defaultPixelScaleFactor = CGFLOAT_MIN;
-        _defaultDataRender = NO;
-        
-        [self addObservers];
-    }
-    return self;
+    return [self initWithRenderType:WEEX_RENDER_TYPE_PLATFORM];
 }
-
 //zjr
 -(void)firePageInit
 {
@@ -181,26 +155,106 @@ typedef enum : NSUInteger {
         }
     }
 }
+- (instancetype)initWithRenderType:(NSString*)renderType
+{
+    self = [super init];
+    if (self) {
+        if ([WXUtility isDarkSchemeSupportEnabled]) {
+            self.schemeName = [WXUtility isSystemInDarkScheme] ? @"dark" : @"light";
+        }
+        else {
+            self.schemeName = @"light";
+        }
+
+        // Update scheme value in JS environment.
+        if (([WXUtility isEnvironmentUsingDarkScheme] && [self.schemeName isEqualToString:@"light"]) ||
+            (![WXUtility isEnvironmentUsingDarkScheme] && [self.schemeName isEqualToString:@"dark"])) {
+            [[WXBridgeManager sharedManager] resetEnvironment];
+        }
+
+        _autoInvertingBehavior = WXAutoInvertingBehaviorDefault;
+        _renderType = renderType;
+        _appearState = YES;
+
+        NSInteger instanceId = 0;
+        @synchronized(bundleUrlOptionKey) {
+            static NSInteger __instance = 0;
+            instanceId = __instance % (1024*1024);
+            __instance += 2; // always add by 2 as even number
+        }
+
+        _instanceId = [NSString stringWithFormat:@"%ld", (long)instanceId];
+
+        if (self.isCustomRenderType) {
+            // check render type is available
+            NSSet* availableRenderTypes = [WXCustomPageBridge getAvailableCustomRenderTypes];
+            if ([availableRenderTypes containsObject:_renderType]) {
+                // custom render page, we use odd instanceId, and (instanceId + 1) is sure not used by other pages.
+                _instanceId = [NSString stringWithFormat:@"%ld", (long)(instanceId + 1)];
+                [WXCoreBridge setPageArgument:_instanceId key:@"renderType" value:_renderType];
+            }
+            else {
+                WXLogError(@"Unsupported render type '%@'. Regress to platform target.", _renderType);
+                _renderType = WEEX_RENDER_TYPE_PLATFORM;
+            }
+        }
+
+        WXLogInfo(@"Create instance: %@, render type: %@", _instanceId, _renderType);
+
+        // TODO self is retained here.
+        [WXSDKManager storeInstance:self forID:_instanceId];
+
+        _bizType = @"";
+        _pageName = @"";
+
+        _performanceDict = [WXThreadSafeMutableDictionary new];
+        _moduleInstances = [WXThreadSafeMutableDictionary new];
+        _styleConfigs = [NSMutableDictionary new];
+        _attrConfigs = [NSMutableDictionary new];
+        _moduleEventObservers = [WXThreadSafeMutableDictionary new];
+        _moduleIntercepts = [NSMutableDictionary new];
+        _trackComponent = NO;
+        _performanceCommit = NO;
+
+        _performance = [[WXPerformance alloc] init];
+        _apmInstance = [[WXApmForInstance alloc] init];
+
+        _useBackupJsThread = NO;
+        _useReactor = NO;
+        _canalParams = [NSMutableDictionary dictionary];
+
+        [self addObservers];
+    }
+    return self;
+}
+
+- (BOOL)isCustomRenderType
+{
+    return ![_renderType isEqualToString:WEEX_RENDER_TYPE_PLATFORM];
+}
 
 - (id<WXBridgeProtocol>)instanceJavaScriptContext
 {
     _debugJS = [WXDebugTool isDevToolDebug];
-    
+
     Class bridgeClass = _debugJS ? NSClassFromString(@"WXDebugger") : [WXJSCoreBridge class];
-    
+
     if (_instanceJavaScriptContext && [_instanceJavaScriptContext isKindOfClass:bridgeClass]) {
         return _instanceJavaScriptContext;
     }
-    
+
     WXAssertBridgeThread();
     if (_instanceJavaScriptContext) {
         _instanceJavaScriptContext = nil;
     }
-    
+
     // WXDebugger is a singleton actually and should not call its init twice.
     _instanceJavaScriptContext = _debugJS ? [NSClassFromString(@"WXDebugger") alloc] : [[WXJSCoreBridge alloc] initWithoutDefaultContext];
     if (!_debugJS) {
         id<WXBridgeProtocol> jsBridge = [[WXSDKManager bridgeMgr] valueForKeyPath:@"bridgeCtx.jsBridge"];
+        if (_useBackupJsThread) {
+              jsBridge = [[WXSDKManager bridgeMgr] valueForKeyPath:@"backupBridgeCtx.jsBridge"];
+        }
         JSContext* globalContex = jsBridge.javaScriptContext;
         JSContextGroupRef contextGroup = JSContextGetGroup([globalContex JSGlobalContextRef]);
         JSClassDefinition classDefinition = kJSClassDefinitionEmpty;
@@ -213,14 +267,14 @@ typedef enum : NSUInteger {
         [WXBridgeContext mountContextEnvironment:instanceContext];
         [_instanceJavaScriptContext setJSContext:instanceContext];
     }
-    
+
     if ([_instanceJavaScriptContext respondsToSelector:@selector(setWeexInstanceId:)]) {
         [_instanceJavaScriptContext setWeexInstanceId:_instanceId];
     }
     if (!_debugJS) {
         [[NSNotificationCenter defaultCenter] postNotificationName:WX_INSTANCE_JSCONTEXT_CREATE_NOTIFICATION object:_instanceJavaScriptContext.javaScriptContext];
     }
-    
+
     return _instanceJavaScriptContext;
 }
 
@@ -228,6 +282,12 @@ typedef enum : NSUInteger {
 {
     // get _rootView.frame in JS thread may cause deaklock.
     return [NSString stringWithFormat:@"<%@: %p; id = %@; rootView = %p; url= %@>", NSStringFromClass([self class]), self, _instanceId, (__bridge void*)_rootView, _scriptURL];
+}
+
+- (void)setParentInstance:(WXSDKInstance *)parentInstance
+{
+    WXLogInfo(@"Embed instance %@ into parent instance %@", _instanceId, parentInstance.instanceId);
+    _parentInstance = parentInstance;
 }
 
 #pragma mark Public Mehtods
@@ -254,6 +314,7 @@ typedef enum : NSUInteger {
                 _rootView.frame = frame;
                 WXPerformBlockOnComponentThread(^{
                     [self.componentManager rootViewFrameDidChange:frame];
+                    [[WXSDKManager bridgeMgr] fireEvent:_instanceId ref:WX_SDK_ROOT_REF type:@"viewportchange" params:nil domChanges:nil];
                 });
             }
         });
@@ -263,14 +324,55 @@ typedef enum : NSUInteger {
 - (void)setViewportWidth:(CGFloat)viewportWidth
 {
     _viewportWidth = viewportWidth;
-    
+
     // notify weex core
-    [WXCoreBridge setViewportWidth:_instanceId width:viewportWidth];
+    NSString* pageId = _instanceId;
+    WXPerformBlockOnComponentThread(^{
+        [WXCoreBridge setViewportWidth:pageId width:viewportWidth];
+    });
 }
 
-- (void)setPageRequiredWidth:(CGFloat)width height:(CGFloat)height
+- (void)setPageKeepRawCssStyles
 {
-    [WXCoreBridge setPageRequired:_instanceId width:width height:height];
+    [self setPageArgument:@"reserveCssStyles" value:@"true"];
+}
+
+- (void)isKeepingRawCssStyles:(void(^)(BOOL))callback {
+    NSString* pageId = _instanceId;
+    WXPerformBlockOnComponentThread(^{
+        if (callback) {
+            callback([WXCoreBridge isKeepingRawCssStyles:pageId]);
+        }
+    });
+}
+
+- (void)setPageArgument:(NSString*)key value:(NSString*)value
+{
+    NSString* pageId = _instanceId;
+    WXPerformBlockOnComponentThread(^{
+        [WXCoreBridge setPageArgument:pageId key:key value:value];
+    });
+}
+
+- (void)setScriptURL:(NSURL *)scriptURL
+{
+    _scriptURL = scriptURL;
+    [WXCoreBridge setPageArgument:_instanceId key:@"url" value:[_scriptURL absoluteString]];
+}
+
+- (BOOL)setPageRequiredWidth:(CGFloat)width height:(CGFloat)height
+{
+    if (CGSizeEqualToSize(_screenSize, CGSizeMake(width, height))) {
+        return NO;
+    }
+    _screenSize = CGSizeMake(width, height);
+
+    // notify weex core
+    NSString* pageId = _instanceId;
+    WXPerformBlockOnComponentThread(^{
+        [WXCoreBridge setPageRequired:pageId width:width height:height];
+    });
+    return YES;
 }
 
 - (void)renderWithURL:(NSURL *)url
@@ -294,25 +396,54 @@ typedef enum : NSUInteger {
         WXLogError(@"Url must be passed if you use renderWithURL");
         return;
     }
+    WXLogInfo(@"pageid: %@ renderWithURL: %@", _instanceId, url.absoluteString);
 
-    _scriptURL = url;
+    _renderPlugin = [WXEaglePluginManager renderWithURL:&url];
+    if (!_renderPlugin) {
+        _renderPlugin = [WXEaglePluginManager renderWithOption:options];
+    }
+    @synchronized (lastPageInfoLock) {
+        lastPageInfo = @{@"pageId": [_instanceId copy], @"url": [url absoluteString] ?: @""};
+    }
+
+    [WXCoreBridge install];
+    if (_useBackupJsThread && !self.renderPlugin.isSkipFramework) {
+        [[WXSDKManager bridgeMgr] executeJSTaskQueue];
+    }
+
+    self.scriptURL = url;
     [self _checkPageName];
     [self.apmInstance startRecord:self.instanceId];
     self.apmInstance.isStartRender = YES;
-    
+
     self.needValidate = [[WXHandlerFactory handlerForProtocol:@protocol(WXValidateProtocol)] needValidate:url];
     WXResourceRequest *request = [WXResourceRequest requestWithURL:url resourceType:WXResourceTypeMainBundle referrer:@"" cachePolicy:NSURLRequestUseProtocolCachePolicy];
     [self _renderWithRequest:request options:options data:data];
 
-    NSURL* nsURL = [NSURL URLWithString:options[@"DATA_RENDER_JS"]];
-    [self _downloadAndExecScript:nsURL];
+    if (self.renderPlugin.isSupportExecScript) {
+        NSMutableDictionary *newOptions = [NSMutableDictionary dictionaryWithDictionary:options];
+        [newOptions setValue:_jsData forKey:@"jsData"];
+        [self.renderPlugin runPluginTask:_instanceId task:@"_downloadAndExecScript:options:" options:newOptions];
+    }
 }
 
 - (void)renderView:(id)source options:(NSDictionary *)options data:(id)data
 {
     _options = [options isKindOfClass:[NSDictionary class]] ? options : nil;
     _jsData = data;
-    
+    _renderPlugin = [WXEaglePluginManager renderWithOption:_options];
+
+    WXLogInfo(@"pageid: %@ renderView pageNmae: %@  options: %@", _instanceId, _pageName, options);
+
+    @synchronized (lastPageInfoLock) {
+        lastPageInfo = @{@"pageId": [_instanceId copy], @"options": options ? [options description] : @""};
+    }
+
+    [WXCoreBridge install];
+    if (_useBackupJsThread && !self.renderPlugin.isSkipFramework) {
+        [[WXSDKManager bridgeMgr] executeJSTaskQueue];
+    }
+
     self.needValidate = [[WXHandlerFactory handlerForProtocol:@protocol(WXValidateProtocol)] needValidate:self.scriptURL];
 
     if ([source isKindOfClass:[NSString class]]) {
@@ -321,31 +452,27 @@ typedef enum : NSUInteger {
     } else if ([source isKindOfClass:[NSData class]]) {
         [self _renderWithData:source];
     }
-    NSURL* nsURL = [NSURL URLWithString:options[@"DATA_RENDER_JS"]];
-    [self _downloadAndExecScript:nsURL];
+
+    if (self.renderPlugin.isSupportExecScript) {
+        NSMutableDictionary *newOptions = [NSMutableDictionary dictionaryWithDictionary:options];
+        [newOptions setValue:_jsData forKey:@"jsData"];
+        [self.renderPlugin runPluginTask:_instanceId task:@"_downloadAndExecScript:options:" options:newOptions];
+    }
 }
 
-- (void)_downloadAndExecScript:(NSURL *)url {
-    [[WXSDKManager bridgeMgr] DownloadJS:url completion:^(NSString *script) {
-        if (!script) {
-            return;
-        }
-        if (self.dataRender) {
-            id<WXDataRenderHandler> dataRenderHandler = [WXHandlerFactory handlerForProtocol:@protocol(WXDataRenderHandler)];
-            if (dataRenderHandler) {
-                [[WXSDKManager bridgeMgr] createInstanceForJS:_instanceId template:script options:_options data:_jsData];
+- (void)registerReactorContext:(JSContext*)context {
+    if (!context) {
+        return;
+    }
+    [WXCoreBridge install];
+    [self.canalParams setObject:context forKey:@"mainJSContext"];
 
-                NSString* instanceId = self.instanceId;
-                WXPerformBlockOnComponentThread(^{
-                    [dataRenderHandler DispatchPageLifecycle:instanceId];
-                });
-            }
-            else {
-                WXLogError(@"No data render handler found!");
-            }
-            return;
-        }
-    }];
+    id<WXReactorProtocol> reactorHandler = [WXHandlerFactory handlerForProtocol:NSProtocolFromString(@"WXReactorProtocol")];
+    if (reactorHandler) {
+        [reactorHandler registerJSContext:self.instanceId];
+    } else {
+        WXLogError(@"There is no reactor handler");
+    }
 }
 
 - (NSString *) bundleTemplate
@@ -359,7 +486,7 @@ typedef enum : NSUInteger {
         WXLogError(@"Fail to find instance！");
         return;
     }
-    
+
     if (_isRendered) {
         [WXExceptionUtils commitCriticalExceptionRT:self.instanceId errCode:[NSString stringWithFormat:@"%d", WX_ERR_RENDER_TWICE] function:@"_renderWithData:" exception:[NSString stringWithFormat:@"instance is rendered twice"] extParams:nil];
         return;
@@ -368,13 +495,19 @@ typedef enum : NSUInteger {
     //some case , with out render (url)
     [self.apmInstance startRecord:self.instanceId];
     self.apmInstance.isStartRender = YES;
-    if (self.dataRender) {
+
+    [_apmInstance setProperty:KEY_PAGE_PROPERTIES_UIKIT_TYPE withValue:_renderType?: WEEX_RENDER_TYPE_PLATFORM];
+    if (self.renderPlugin) {
         [self.apmInstance setProperty:KEY_PAGE_PROPERTIES_RENDER_TYPE withValue:@"eagle"];
     }
 
     self.performance.renderTimeOrigin = CACurrentMediaTime()*1000;
     self.performance.renderUnixTimeOrigin = [WXUtility getUnixFixTimeMillis];
-    [self.apmInstance onStage:KEY_PAGE_STAGES_RENDER_ORGIGIN];
+    long renderOriginTimePlatform = [self.apmInstance onStage:KEY_PAGE_STAGES_RENDER_ORGIGIN];
+
+    // pass render origin time to page
+    [WXCoreBridge setPageArgument:_instanceId key:@"renderTimeOrigin" value:[NSString stringWithFormat:@"%lld", (long long)([[NSDate date] timeIntervalSince1970] * 1000)]];
+    [WXCoreBridge setPageArgument:_instanceId key:@"renderTimeOriginPlatform" value:[NSString stringWithFormat:@"%lld", (long long)renderOriginTimePlatform]];
 
     if (![WXUtility isBlankString:self.pageName]) {
         WXLog(@"Start rendering page:%@", self.pageName);
@@ -401,17 +534,27 @@ typedef enum : NSUInteger {
         dictionary[@"debug"] = @(YES);
     }
 
-    //TODO WXRootView
     WXPerformBlockOnMainThread(^{
-        _rootView = [[WXRootView alloc] initWithFrame:self.frame];
-        _rootView.instance = self;
-        if(self.onCreate) {
-            self.onCreate(_rootView);
+        if (self.isCustomRenderType) {
+            self->_rootView = [WXCustomPageBridge createPageRootView:self.instanceId pageType:self.renderType frame:self.frame];
+        }
+        else {
+            self->_rootView = [[WXRootView alloc] initWithFrame:self.frame];
+            ((WXRootView*)(self->_rootView)).instance = self;
+        }
+
+        if (self.onCreate) {
+            self.onCreate(self->_rootView);
         }
     });
     // ensure default modules/components/handlers are ready before create instance
     [WXSDKEngine registerDefaults];
+    id darkSchemeHandler = [WXSDKInstance darkSchemeColorHandler];
     [[NSNotificationCenter defaultCenter] postNotificationName:WX_SDKINSTANCE_WILL_RENDER object:self];
+    if ([WXSDKInstance darkSchemeColorHandler] != darkSchemeHandler) {
+        // After notification, handler for WXDarkSchemeProtocol might change.
+        self.schemeName = [WXUtility isSystemInDarkScheme] ? @"dark" : @"light";
+    }
 
     if ([self _handleConfigCenter]) {
         int wxErrorCode = 9999;
@@ -435,7 +578,7 @@ typedef enum : NSUInteger {
         WXLogError(@"Fail to find instance！");
         return;
     }
-    
+
     if (_isRendered) {
         [WXExceptionUtils commitCriticalExceptionRT:self.instanceId errCode:[NSString stringWithFormat:@"%d", WX_ERR_RENDER_TWICE] function:@"_renderWithMainBundleString:" exception:[NSString stringWithFormat:@"instance is rendered twice"] extParams:nil];
         return;
@@ -445,14 +588,20 @@ typedef enum : NSUInteger {
     [self _checkPageName];
     [self.apmInstance startRecord:self.instanceId];
     self.apmInstance.isStartRender = YES;
-    if (self.dataRender) {
+
+    [_apmInstance setProperty:KEY_PAGE_PROPERTIES_UIKIT_TYPE withValue:_renderType?: WEEX_RENDER_TYPE_PLATFORM];
+    if (self.renderPlugin) {
         [self.apmInstance setProperty:KEY_PAGE_PROPERTIES_RENDER_TYPE withValue:@"eagle"];
     }
-    
+
     self.performance.renderTimeOrigin = CACurrentMediaTime()*1000;
     self.performance.renderUnixTimeOrigin = [WXUtility getUnixFixTimeMillis];
-    [self.apmInstance onStage:KEY_PAGE_STAGES_RENDER_ORGIGIN];
-    
+    long renderOriginTimePlatform = [self.apmInstance onStage:KEY_PAGE_STAGES_RENDER_ORGIGIN];
+
+    // pass render origin time to page
+    [WXCoreBridge setPageArgument:_instanceId key:@"renderTimeOrigin" value:[NSString stringWithFormat:@"%lld", (long long)([[NSDate date] timeIntervalSince1970] * 1000)]];
+    [WXCoreBridge setPageArgument:_instanceId key:@"renderTimeOriginPlatform" value:[NSString stringWithFormat:@"%lld", (long long)renderOriginTimePlatform]];
+
     if (![WXUtility isBlankString:self.pageName]) {
         WXLog(@"Start rendering page:%@", self.pageName);
     } else {
@@ -470,10 +619,7 @@ typedef enum : NSUInteger {
     if (!self.userInfo[@"jsMainBundleStringContentLength"]) {
         self.userInfo[@"jsMainBundleStringContentLength"] = @([mainBundleString length]);
     }
-    if (!self.userInfo[@"jsMainBundleStringContentLength"]) {
-        self.userInfo[@"jsMainBundleStringContentMd5"] = [WXUtility md5:mainBundleString];
-    }
-    
+
     id<WXPageEventNotifyEventProtocol> pageEvent = [WXSDKEngine handlerForProtocol:@protocol(WXPageEventNotifyEventProtocol)];
     if ([pageEvent respondsToSelector:@selector(pageStart:)]) {
         [pageEvent pageStart:self.instanceId];
@@ -481,28 +627,38 @@ typedef enum : NSUInteger {
 
     WX_MONITOR_INSTANCE_PERF_START(WXPTFirstScreenRender, self);
     WX_MONITOR_INSTANCE_PERF_START(WXPTAllRender, self);
-    
+
     NSMutableDictionary *dictionary = [_options mutableCopy];
     if ([WXLog logLevel] >= WXLogLevelLog) {
         dictionary[@"debug"] = @(YES);
     }
-    
+
     if ([WXDebugTool getReplacedBundleJS]) {
         mainBundleString = [WXDebugTool getReplacedBundleJS];
     }
-    
-    //TODO WXRootView
+
     WXPerformBlockOnMainThread(^{
-        _rootView = [[WXRootView alloc] initWithFrame:self.frame];
-        _rootView.instance = self;
-        if(self.onCreate) {
-            self.onCreate(_rootView);
+        if (self.isCustomRenderType) {
+            self->_rootView = [WXCustomPageBridge createPageRootView:self.instanceId pageType:self.renderType frame:self.frame];
+        }
+        else {
+            self->_rootView = [[WXRootView alloc] initWithFrame:self.frame];
+            ((WXRootView*)(self->_rootView)).instance = self;
+        }
+
+        if (self.onCreate) {
+            self.onCreate(self->_rootView);
         }
     });
     // ensure default modules/components/handlers are ready before create instance
     [WXSDKEngine registerDefaults];
-     [[NSNotificationCenter defaultCenter] postNotificationName:WX_SDKINSTANCE_WILL_RENDER object:self];
-    
+    id darkSchemeHandler = [WXSDKInstance darkSchemeColorHandler];
+    [[NSNotificationCenter defaultCenter] postNotificationName:WX_SDKINSTANCE_WILL_RENDER object:self];
+    if ([WXSDKInstance darkSchemeColorHandler] != darkSchemeHandler) {
+        // After notification, handler for WXDarkSchemeProtocol might change.
+        self.schemeName = [WXUtility isSystemInDarkScheme] ? @"dark" : @"light";
+    }
+
     _mainBundleString = mainBundleString;
     if ([self _handleConfigCenter]) {
         int wxErrorCode = 9999;
@@ -513,20 +669,50 @@ typedef enum : NSUInteger {
         [self.apmInstance setProperty:KEY_PROPERTIES_ERROR_CODE withValue:[@(wxErrorCode) stringValue]];
         return;
     }
-    
-    [[WXSDKManager bridgeMgr] createInstance:self.instanceId template:mainBundleString options:dictionary data:_jsData];
-    
+
+    if ([dictionary[@"USE_REACTOR"] boolValue]) {
+        id<WXReactorProtocol> reactorHandler = [WXHandlerFactory handlerForProtocol:NSProtocolFromString(@"WXReactorProtocol")];
+        if (reactorHandler) {
+            _useReactor = YES;
+            if (![self.canalParams objectForKey:@"mainJSContext"]) {
+                [reactorHandler registerJSContext:self.instanceId];
+            }
+            [reactorHandler render:self.instanceId source:mainBundleString data:_jsData];
+        } else {
+            WXLogError(@"There is no reactor handler");
+        }
+    } else {
+        [[WXSDKManager bridgeMgr] createInstance:self.instanceId template:mainBundleString options:dictionary data:_jsData];
+    }
+
     WX_MONITOR_PERF_SET(WXPTBundleSize, [mainBundleString lengthOfBytesUsingEncoding:NSUTF8StringEncoding], self);
-    
+
     _isRendered = YES;
 }
 
 - (BOOL)_handleConfigCenter
 {
     id configCenter = [WXSDKEngine handlerForProtocol:@protocol(WXConfigCenterProtocol)];
-    if ([configCenter respondsToSelector:@selector(configForKey:defaultValue:isDefault:)]) {		
+    if ([configCenter respondsToSelector:@selector(configForKey:defaultValue:isDefault:)]) {
         BOOL enableRTLLayoutDirection = [[configCenter configForKey:@"iOS_weex_ext_config.enableRTLLayoutDirection" defaultValue:@(YES) isDefault:NULL] boolValue];
         [WXUtility setEnableRTLLayoutDirection:enableRTLLayoutDirection];
+
+        BOOL isIOS13 = [[[UIDevice currentDevice] systemVersion] integerValue] == 13;
+        BOOL useMRCForInvalidJSONObject = [[configCenter configForKey:@"iOS_weex_ext_config.useMRCForInvalidJSONObject" defaultValue:@(YES) isDefault:NULL] boolValue];
+        BOOL alwaysUseMRCForObjectToWeexCore = [[configCenter configForKey:@"iOS_weex_ext_config.alwaysUseMRC" defaultValue:@(NO) isDefault:NULL] boolValue];
+        ConvertSwitches(isIOS13, useMRCForInvalidJSONObject, alwaysUseMRCForObjectToWeexCore);
+
+        BOOL isDarkSchemeSupportEnabled = [[configCenter configForKey:@"iOS_weex_ext_config.supportDarkScheme" defaultValue:@(YES) isDefault:NULL] boolValue];
+        if (@available(iOS 13.0, *)) {
+        }
+        else {
+            isDarkSchemeSupportEnabled = NO;
+        }
+        [WXUtility setDarkSchemeSupportEnable:isDarkSchemeSupportEnabled];
+    }
+    else {
+        BOOL isIOS13 = [[[UIDevice currentDevice] systemVersion] integerValue] == 13;
+        ConvertSwitches(isIOS13, YES, NO);
     }
     return NO;
 }
@@ -539,23 +725,15 @@ typedef enum : NSUInteger {
 - (void)_renderWithRequest:(WXResourceRequest *)request options:(NSDictionary *)options data:(id)data;
 {
     NSURL *url = request.URL;
-    _scriptURL = url;
+    self.scriptURL = url;
     _jsData = data;
     if (![options isKindOfClass:[NSDictionary class]]) {
         options = @{};
     }
     NSMutableDictionary *newOptions = [options mutableCopy] ?: [NSMutableDictionary new];
-    
+
     if (!newOptions[bundleUrlOptionKey]) {
         newOptions[bundleUrlOptionKey] = url.absoluteString;
-    }
-
-    if ( [url.absoluteString containsString:@"__data_render=true"]) {
-        newOptions[@"DATA_RENDER"] = @(YES);
-    }
-
-    if ([url.absoluteString hasSuffix:WEEX_LITE_URL_SUFFIX] || [url.absoluteString containsString:@"__eagle=true"]) {
-        newOptions[@"WLASM_RENDER"] = @(YES);
     }
 
     // compatible with some wrong type, remove this hopefully in the future.
@@ -565,7 +743,7 @@ typedef enum : NSUInteger {
     }
     _options = [newOptions copy];
     request.userAgent = [WXUtility userAgent];
-    
+
     WX_MONITOR_INSTANCE_PERF_START(WXPTJSDownload, self);
     __weak typeof(self) weakSelf = self;
     _mainBundleLoader = [[WXResourceLoader alloc] initWithRequest:request];;
@@ -575,11 +753,11 @@ typedef enum : NSUInteger {
         if (strongSelf == nil) {
             return;
         }
-        
+
         NSMutableDictionary* optionsCopy = [strongSelf->_options mutableCopy];
         optionsCopy[bundleResponseUrlOptionKey] = [response.URL absoluteString];
         strongSelf->_options = [optionsCopy copy];
-        
+
         NSError *error = nil;
         if ([response isKindOfClass:[NSHTTPURLResponse class]] && ((NSHTTPURLResponse *)response).statusCode != 200) {
             error = [NSError errorWithDomain:WX_ERROR_DOMAIN
@@ -589,18 +767,18 @@ typedef enum : NSUInteger {
                 strongSelf.onFailed(error);
             }
         }
-        
+
         if (strongSelf.onJSDownloadedFinish) {
             strongSelf.onJSDownloadedFinish(response, request, data, error);
         }
-        
+
         if (error) {
             [WXExceptionUtils commitCriticalExceptionRT:strongSelf.instanceId
                                                 errCode:[NSString stringWithFormat:@"%d", WX_KEY_EXCEPTION_JS_DOWNLOAD]
                                                function:@"_renderWithRequest:options:data:"
                                               exception:[NSString stringWithFormat:@"download bundle error :%@",[error localizedDescription]]
                                               extParams:nil];
-        
+
             strongSelf.apmInstance.isDownLoadFailed = YES;
             [strongSelf.apmInstance setProperty:KEY_PROPERTIES_ERROR_CODE withValue:[@(WX_KEY_EXCEPTION_JS_DOWNLOAD) stringValue]];
             return;
@@ -614,7 +792,7 @@ typedef enum : NSUInteger {
                                                function:@"_renderWithRequest:options:data:"
                                               exception:errorMessage
                                               extParams:nil];
-            
+
             if (strongSelf.onFailed) {
                 strongSelf.onFailed(error);
             }
@@ -622,26 +800,19 @@ typedef enum : NSUInteger {
             [strongSelf.apmInstance setProperty:KEY_PROPERTIES_ERROR_CODE withValue:[@(WX_KEY_EXCEPTION_JS_DOWNLOAD) stringValue]];
             return;
         }
-        
-        if (([newOptions[@"DATA_RENDER"] boolValue] && [newOptions[@"RENDER_WITH_BINARY"] boolValue]) || [newOptions[@"WLASM_RENDER"] boolValue]) {
+
+        if (strongSelf.renderPlugin && strongSelf.renderPlugin.isSkipFramework) {
+            [strongSelf.apmInstance onStage:KEY_PAGE_STAGES_DOWN_BUNDLE_END];
             [strongSelf _renderWithData:data];
             return;
         }
-        
-        //zjr add
+
         NSString *jsBundleString = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSString *bs=  jsBundleString;
-        NSString *bo=@"";
-        NSString *sp=@"/*******weexplus_split_weexplus******/";
-        if([bs rangeOfString:sp].length>0){
-            bo=[bs componentsSeparatedByString:sp][0];
-            [WXSDKInstance setAppBoardContent:bo];
-            jsBundleString= [bs stringByReplacingOccurrencesOfString:sp withString:@""];
-        }else{
-            //            bs=[board add:bs];
-            jsBundleString= [[WXSDKInstance getAppBoardContent] stringByAppendingString:jsBundleString];
-        }
         //zjr add
+        if([WXSDKInstance getAppBoardContent]!=nil&&![url.absoluteString  hasPrefix:@"http"])
+        {
+            jsBundleString=[[WXSDKInstance getAppBoardContent] stringByAppendingString:jsBundleString];
+        }
         if (!jsBundleString) {
             WX_MONITOR_FAIL_ON_PAGE(WXMTJSDownload, WX_ERR_JSBUNDLE_STRING_CONVERT, @"data converting to string failed.", strongSelf.pageName)
             [strongSelf.apmInstance setProperty:KEY_PROPERTIES_ERROR_CODE withValue:[@(WX_ERR_JSBUNDLE_STRING_CONVERT) stringValue]];
@@ -650,47 +821,48 @@ typedef enum : NSUInteger {
         if (!strongSelf.userInfo) {
             strongSelf.userInfo = [NSMutableDictionary new];
         }
-        
+
         NSUInteger bundleSize = [jsBundleString length];
         [strongSelf.apmInstance updateDiffStats:KEY_PAGE_STATS_BUNDLE_SIZE withDiffValue:bundleSize];
-        
+
         strongSelf.userInfo[@"jsMainBundleStringContentLength"] = @(bundleSize);
         strongSelf.userInfo[@"jsMainBundleStringContentMd5"] = [WXUtility md5:jsBundleString];
 
         WX_MONITOR_SUCCESS_ON_PAGE(WXMTJSDownload, strongSelf.pageName);
         WX_MONITOR_INSTANCE_PERF_END(WXPTJSDownload, strongSelf);
-        
+
         if (strongSelf.onRenderTerminateWhenJSDownloadedFinish) {
             if (strongSelf.onRenderTerminateWhenJSDownloadedFinish(response, request, data, error)) {
                 return;
             }
         }
-        
+
         [strongSelf.apmInstance onStage:KEY_PAGE_STAGES_DOWN_BUNDLE_END];
         [strongSelf.apmInstance updateExtInfoFromResponseHeader:response.allHeaderFields];
         [strongSelf _renderWithMainBundleString:jsBundleString];
         [WXMonitor performanceFinishWithState:DebugAfterRequest instance:strongSelf];
     };
-    
+
     _mainBundleLoader.onFailed = ^(NSError *loadError) {
+        WXLogError(@"Request failed with error: %@", loadError);
+
         NSString *errorMessage = [NSString stringWithFormat:@"Request to %@ occurs an error:%@, info:%@", request.URL, loadError.localizedDescription, loadError.userInfo];
         long wxErrorCode = [loadError.domain isEqualToString:NSURLErrorDomain] && loadError.code == NSURLErrorNotConnectedToInternet ? WX_ERR_NOT_CONNECTED_TO_INTERNET : WX_ERR_JSBUNDLE_DOWNLOAD;
 
         WX_MONITOR_FAIL_ON_PAGE(WXMTJSDownload, wxErrorCode, errorMessage, weakSelf.pageName);
-        
-    
+
         NSMutableDictionary *allUserInfo = [[NSMutableDictionary alloc] initWithDictionary:error.userInfo];
         [allUserInfo addEntriesFromDictionary:loadError.userInfo];
         NSError *errorWithReportMsg = [NSError errorWithDomain:error.domain
                                              code:error.code
                                          userInfo:allUserInfo];
-      
+
         if (weakSelf.onFailed) {
             weakSelf.onFailed(errorWithReportMsg);
         }
         [weakSelf.apmInstance setProperty:KEY_PROPERTIES_ERROR_CODE withValue:[@(wxErrorCode) stringValue]];
     };
-    
+
     [_mainBundleLoader start];
 }
 
@@ -701,26 +873,36 @@ typedef enum : NSUInteger {
         WXLogError(@"No script URL found while reloading!");
         return;
     }
-    
+
     NSURLRequestCachePolicy cachePolicy = forcedReload ? NSURLRequestReloadIgnoringCacheData : NSURLRequestUseProtocolCachePolicy;
     WXResourceRequest *request = [WXResourceRequest requestWithURL:_scriptURL resourceType:WXResourceTypeMainBundle referrer:_scriptURL.absoluteString cachePolicy:cachePolicy];
     [self _renderWithRequest:request options:_options data:_jsData];
 }
 
+- (void)reloadLayout
+{
+    NSString* pageId = _instanceId;
+    WXPerformBlockOnComponentThread(^{
+        [WXCoreBridge reloadPageLayout:pageId];
+    });
+}
+
 - (void)refreshInstance:(id)data
 {
     WXLogDebug(@"refresh instance: %@, data:%@", self, [WXUtility JSONString:data]);
-    
+
     if (!self.instanceId) {
         WXLogError(@"Fail to find instance！");
         return;
     }
-    
+
     [[WXSDKManager bridgeMgr] refreshInstance:self.instanceId data:data];
 }
 
 - (void)destroyInstance
 {
+    WXLogInfo(@"Destroy instance: %@", _instanceId);
+
     [self.apmInstance endRecord];
     NSString *url = @"";
     if ([WXPrerenderManager isTaskExist:[self.scriptURL absoluteString]]) {
@@ -730,7 +912,7 @@ typedef enum : NSUInteger {
         WXLogError(@"Fail to find instance！");
         return;
     }
-    
+
     id<WXPageEventNotifyEventProtocol> pageEvent = [WXSDKEngine handlerForProtocol:@protocol(WXPageEventNotifyEventProtocol)];
     if ([pageEvent respondsToSelector:@selector(pageDestroy:)]) {
         [pageEvent pageDestroy:self.instanceId];
@@ -739,25 +921,51 @@ typedef enum : NSUInteger {
 
     [WXPrerenderManager removePrerenderTaskforUrl:[self.scriptURL absoluteString]];
     [WXPrerenderManager destroyTask:self.instanceId];
-    [[WXSDKManager bridgeMgr] destroyInstance:self.instanceId];
-    
+
+    if (_useReactor) {
+        id<WXReactorProtocol> reactorHandler = [WXHandlerFactory handlerForProtocol:NSProtocolFromString(@"WXReactorProtocol")];
+        if (reactorHandler) {
+            [reactorHandler unregisterJSContext:self.instanceId];
+        } else {
+            WXLogError(@"There is no reactor handler");
+        }
+    } else if (!self.renderPlugin) {
+        [[WXSDKManager bridgeMgr] destroyInstance:self.instanceId];
+    }
+
     WXComponentManager* componentManager = self.componentManager;
     NSString* instanceId = self.instanceId;
-    
+
+    /* Custom render target, currently we manage the pages by ourselves not by WeexCore.
+     We remove the WeexCore page immediately so that any later render commands will be ignored. */
+    if ([WXCustomPageBridge isCustomPage:instanceId]) {
+        [[WXCustomPageBridge sharedInstance] invalidatePage:instanceId];
+    }
+
     WXPerformBlockOnComponentThread(^{
         // Destroy components and views in main thread. Unbind with underneath RenderObjects.
         [componentManager unload];
-        
+
         // Destroy weexcore c++ page and objects.
         [WXCoreBridge closePage:instanceId];
-        
+
+        if (self.renderPlugin.isSupportExecScript) {
+            [[WXSDKManager bridgeMgr] destroyInstance:instanceId];
+        }
+
+        // Destroy heron render target page
+        if ([WXCustomPageBridge isCustomPage:instanceId]) {
+            [[WXCustomPageBridge sharedInstance] removePage:instanceId];
+        }
+
         // Reading config from orange for Release instance in Main Thread or not, for Bug #15172691 +{
         dispatch_async(dispatch_get_main_queue(), ^{
             [WXSDKManager removeInstanceforID:instanceId];
+            WXLogInfo(@"Finally remove instance: %@", instanceId);
         });
         //+}
     });
-    
+
     if (url.length > 0) {
         [WXPrerenderManager addGlobalTask:url callback:nil];
     }
@@ -774,17 +982,19 @@ typedef enum : NSUInteger {
         WXLogError(@"Fail to find instance！");
         return;
     }
-    
+
     if (!_performanceCommit && state == WeexInstanceDisappear) {
         [self updatePerDicBeforExit];
         WX_MONITOR_INSTANCE_PERF_COMMIT(self);
         _performanceCommit = YES;
     }
-    
+
     NSMutableDictionary *data = [NSMutableDictionary dictionary];
     [data setObject:[NSString stringWithFormat:@"%ld",(long)state] forKey:@"state"];
     //[[WXSDKManager bridgeMgr] updateState:self.instanceId data:data];
-    
+
+    // First post internal notification
+    [[NSNotificationCenter defaultCenter] postNotificationName:WX_INSTANCE_NOTIFICATION_UPDATE_STATE_INTERNAL object:self userInfo:data];
     [[NSNotificationCenter defaultCenter] postNotificationName:WX_INSTANCE_NOTIFICATION_UPDATE_STATE object:self userInfo:data];
 }
 
@@ -792,7 +1002,7 @@ typedef enum : NSUInteger {
 {
     if (!moduleClass)
         return nil;
-    
+
     id<WXModuleProtocol> moduleInstance = self.moduleInstances[NSStringFromClass(moduleClass)];
     if (!moduleInstance) {
         moduleInstance = [[moduleClass alloc] init];
@@ -800,28 +1010,28 @@ typedef enum : NSUInteger {
             [moduleInstance setWeexInstance:self];
         self.moduleInstances[NSStringFromClass(moduleClass)] = moduleInstance;
     }
-    
+
     return moduleInstance;
 }
 
 - (WXComponent *)componentForRef:(NSString *)ref
 {
     WXAssertComponentThread();
-    
+
     return [_componentManager componentForRef:ref];
 }
 
 - (NSUInteger)numberOfComponents
 {
     WXAssertComponentThread();
-    
+
     return [_componentManager numberOfComponents];
 }
 
 - (void)enumerateComponentsUsingBlock:(void (^)(WXComponent *, BOOL *stop))block
 {
     WXAssertComponentThread();
-    
+
     [_componentManager enumerateComponentsUsingBlock:block];
 }
 
@@ -844,37 +1054,15 @@ typedef enum : NSUInteger {
                                 @"param":params?:@{},
                                 @"eventName":eventName
                                 };
-    
+
     [[NSNotificationCenter defaultCenter] postNotificationName:WX_MODULE_EVENT_FIRE_NOTIFICATION object:self userInfo:userInfo];
 }
 
 - (CGFloat)pixelScaleFactor
 {
-    if (self.viewportWidth > 0) {
-        return [WXUtility portraitScreenSize].width / self.viewportWidth;
-    } else {
-        if (_defaultPixelScaleFactor != CGFLOAT_MIN) {
-            return _defaultPixelScaleFactor;
-        }
-        
-        _defaultPixelScaleFactor = [WXUtility defaultPixelScaleFactor];
-        return _defaultPixelScaleFactor;
-    }
-}
-    
-- (BOOL)wlasmRender {
-    if ([_options[@"WLASM_RENDER"] boolValue]) {
-        return YES;
-    }
-    return NO;
-}
-
-- (BOOL)dataRender
-{
-    if ([_options[@"DATA_RENDER"] boolValue] || [_options[@"WLASM_RENDER"] boolValue]) {
-        return YES;
-    }
-    return _defaultDataRender;
+    CGFloat usingScreenWidth = _screenSize.width > 0 ? _screenSize.width : [WXCoreBridge getDeviceSize].width;
+    CGFloat usingViewPort = _viewportWidth > 0 ? _viewportWidth : WXDefaultScreenWidth;
+    return usingScreenWidth / usingViewPort;
 }
 
 - (NSURL *)completeURL:(NSString *)url
@@ -893,7 +1081,7 @@ typedef enum : NSUInteger {
         return result;
     }
     // if result is nil, try url-encode the 'url' string.
-    return [NSURL URLWithString:[url stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding] relativeToURL:_scriptURL];
+    return [NSURL URLWithString:[url stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]] relativeToURL:_scriptURL];
 }
 
 - (BOOL)checkModuleEventRegistered:(NSString*)event moduleClassName:(NSString*)moduleClassName
@@ -1010,7 +1198,7 @@ typedef enum : NSUInteger {
         [self removeObserver:self forKeyPath:@"state" context:NULL];
         [[NSNotificationCenter defaultCenter] removeObserver:self];
     }
-    @catch (NSException *exception) {
+    @catch (NSException *exception) {//!OCLint
     }
 }
 
@@ -1029,7 +1217,7 @@ typedef enum : NSUInteger {
     if (!_componentManager) {
         _componentManager = [[WXComponentManager alloc] initWithWeexInstance:self];
     }
-    
+
     return _componentManager;
 }
 
@@ -1038,10 +1226,181 @@ typedef enum : NSUInteger {
     if ([keyPath isEqualToString:@"state"]) {
         WXState state = [change[@"new"] longValue];
         [self updateState:state];
-        
+
         if (state == WeexInstanceDestroy) {
             [self destroyInstance];
         }
+    }
+}
+
+- (void)willAppear
+{
+    if (self.isCustomRenderType) {
+        if (!self.appearState) {
+            // do create window,
+            [[NSNotificationCenter defaultCenter] postNotificationName:WX_INSTANCE_NOTIFICATION_CHANGE_VISIBILITY_INTERNAL object:self userInfo:@{@"visible": @(YES)}];
+            self.appearState = YES;
+        }
+    }
+}
+
+- (void)didDisappear
+{
+    if (self.isCustomRenderType) {
+        if (self.appearState) {
+            // do destroy window
+            [[NSNotificationCenter defaultCenter] postNotificationName:WX_INSTANCE_NOTIFICATION_CHANGE_VISIBILITY_INTERNAL object:self userInfo:@{@"visible": @(NO)}];
+            self.appearState = NO;
+        }
+    }
+}
+
++ (NSDictionary*)lastPageInfo
+{
+    NSDictionary* result;
+    @synchronized (lastPageInfoLock) {
+        result = [lastPageInfo copy];
+    }
+    return result;
+}
+
+- (void)setAutoInvertingBehavior:(WXAutoInvertingBehavior)behavior
+{
+    _autoInvertingBehavior = behavior;
+}
+
++ (id<WXDarkSchemeProtocol>)darkSchemeColorHandler
+{
+    return [WXHandlerFactory handlerForProtocol:@protocol(WXDarkSchemeProtocol)];
+}
+
+- (NSString*)currentSchemeName
+{
+    return self.schemeName;
+}
+
+- (BOOL)isDarkScheme
+{
+    return [self.schemeName isEqualToString:@"dark"];
+}
+
+- (void)registerModuleIntercept:(NSString*)moduleName callBack:(WXModuleInterceptCallback)callback {
+    __weak WXSDKInstance* weakSelf = self;
+    WXPerformBlockOnBridgeThread(^{
+        __strong WXSDKInstance* strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        if (![WXUtility isBlankString:moduleName] && callback) {
+            [strongSelf->_moduleIntercepts setObject:callback forKey:moduleName];
+         }
+    });
+}
+
+- (void)unRegisterModuleIntercept:(NSString*)moduleName {
+    __weak WXSDKInstance* weakSelf = self;
+    WXPerformBlockOnBridgeThread(^{
+        __strong WXSDKInstance* strongSelf = weakSelf;
+        if (strongSelf == nil) {
+            return;
+        }
+        if (![WXUtility isBlankString:moduleName]) {
+            [strongSelf->_moduleIntercepts removeObjectForKey:moduleName];
+        }
+    });
+}
+
+- (BOOL)moduleInterceptWithModuleName:(NSString*)moduleName methodName:(NSString*)methodName arguments:(NSArray*)arguments options:(NSDictionary*)options {
+    WXAssertBridgeThread();
+    if ([WXUtility isBlankString:moduleName]) {
+        return NO;
+    }
+    WXModuleInterceptCallback callBack = [_moduleIntercepts objectForKey:moduleName];
+    if (callBack) {
+        return callBack(moduleName, methodName, arguments, options);
+    }
+    return NO;
+}
+
+- (void)setCurrentSchemeName:(NSString*)name
+{
+    if (![WXUtility isDarkSchemeSupportEnabled]) {
+        self.schemeName = @"light";
+        return;
+    }
+
+    if (name && ![name isEqualToString:self.schemeName]) {
+        self.schemeName = name;
+
+        if (self.isCustomRenderType) {
+            return;
+        }
+
+        WXDarkSchemeModule* darkSchemeModule = [self moduleForClass:[WXDarkSchemeModule class]];
+        [darkSchemeModule onInstanceSchemeChanged];
+
+        // Recursively visit all components and notify that scheme had changed.
+        __weak WXSDKInstance* weakSelf = self;
+        WXPerformBlockOnComponentThread(^{
+            __strong WXSDKInstance* strongSelf = weakSelf;
+            if (strongSelf == nil) {
+                return;
+            }
+
+            if (!strongSelf->_componentManager.isValid) {
+                return;
+            }
+
+            [strongSelf->_componentManager enumerateComponentsUsingBlock:^(WXComponent * _Nonnull component, BOOL * _Nonnull stop) {
+                __weak WXComponent* wcomp = component;
+                WXPerformBlockOnMainThread(^{
+                    __strong WXComponent* scomp = wcomp;
+                    if (scomp) {
+                        [scomp schemeDidChange:name];
+                    }
+                });
+            }];
+        });
+
+        [[WXSDKManager bridgeMgr] fireEvent:_instanceId
+                                        ref:WX_SDK_ROOT_REF
+                                       type:@"schemechange"
+                                     params:@{@"scheme": self.schemeName?:@"light"}
+                                 domChanges:nil];
+    }
+}
+
+- (UIColor*)chooseColor:(UIColor*)originalColor
+       lightSchemeColor:(UIColor*)lightColor
+        darkSchemeColor:(UIColor*)darkColor
+                 invert:(BOOL)invert
+                  scene:(WXColorScene)scene
+{
+    if (![WXUtility isDarkSchemeSupportEnabled]) {
+        return originalColor;
+    }
+
+    if ([self isDarkScheme]) {
+        if (darkColor) {
+            return darkColor;
+        }
+        else if (invert) {
+            // Invert originalColor
+            if (originalColor == [UIColor clearColor]) {
+                return originalColor;
+            }
+            UIColor* invertdColor = [[WXSDKInstance darkSchemeColorHandler] getInvertedColorFor:originalColor ofScene:scene withDefault:originalColor];
+            return invertdColor ?:originalColor;
+        }
+        else {
+            return originalColor;
+        }
+    }
+    else if (lightColor) {
+        return lightColor;
+    }
+    else {
+        return originalColor;
     }
 }
 
@@ -1063,7 +1422,7 @@ typedef enum : NSUInteger {
 
 - (void)creatFinish
 {
-    
+
 }
 
 @end
