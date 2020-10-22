@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
 
   s.name         = "PlusWeexSDK"
 
-  s.version      = "1.0.16"
+  s.version      = "1.0.17"
 
   s.summary      = "WeexSDK Source."
 
@@ -38,7 +38,7 @@ Pod::Spec.new do |s|
   # }
 
   # use for playground
-  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.16" }
+  s.source =  { :git => "https://github.com/farwolf2010/PlusWeexSDK.git", :tag => "1.0.17" }
   s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
                    'ios/weex_core/Source/**/*.{h,hpp,m,mm,c,cpp,cc}'
   # s.source_files = 'ios/sdk/WeexSDK/Sources/**/*.{h,m,mm,c,cpp,cc}',
